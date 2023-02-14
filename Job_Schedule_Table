@@ -1,0 +1,189 @@
+<?php
+
+/* A function to show Job Schedule inside Job Schedule printout
+ * 
+ * [CUSTOMFUNCTION|my_DisplayJobScheduleTable|$serviceContractId$|CUSTOMFUNCTION]
+ */
+//Created by: Zalikha 18/8/2022
+//Objective: To display Job Schedule table
+if(!function_exists('my_DisplayJobScheduleTable')) 
+{
+	function my_DisplayJobScheduleTable($serviceContractId) 
+	{
+		if(isset($serviceContractId) AND $serviceContractId != "") 
+		{
+			$count = 1;
+			$adb = PearDatabase::getInstance();
+			
+			//Find all jobs
+			$sqlJobs = "SELECT * FROM vtigercrm71.vtiger_jobs
+						INNER JOIN vtigercrm71.vtiger_jobscf ON vtiger_jobs.jobsid = vtiger_jobscf.jobsid
+						WHERE contracts = ?;";
+			$resJobs = $adb->pquery($sqlJobs, array($serviceContractId));
+			
+			while($rowJobs = $adb->fetch_array($resJobs))
+			{
+				$jobId = $rowJobs['jobsid'];
+				$startDate = date("d-M-Y", strtotime($rowJobs[$GLOBALS['cfid_JobStartDate']]));
+				$startTime = date("h:i A", strtotime($rowJobs[$GLOBALS['cfid_JobStartTime']]));
+				
+				//Find all treatment
+				$countIns = 1;
+				$sqlInstruction = "SELECT DISTINCT ".$GLOBALS['cfid_Method']." FROM vtigercrm71.vtiger_instructions
+							INNER JOIN vtigercrm71.vtiger_instructionscf ON vtiger_instructions.instructionsid = vtiger_instructionscf.instructionsid
+							INNER JOIN vtigercrm71.vtiger_crmentity ON vtiger_crmentity.crmid = vtiger_instructions.instructionsid
+							WHERE deleted = 0 AND jobs = ?;";
+				$resInstructions = $adb->pquery($sqlInstruction, array($jobId));
+				while($rowIns = $adb->fetch_array($resInstructions))
+				{
+					if($countIns == 1)
+						$treatment = $rowIns[$GLOBALS['cfid_Method']];
+					else
+						$treatment = $treatment.", ".$rowIns[$GLOBALS['cfid_Method']];
+					
+					$countIns++;
+				}
+				
+				if(empty($treatment))
+					$treatment = '-';
+				
+				//Find Branch Name
+				$branchId = $rowJobs['deliveryaddress'];
+				$orgId = $rowJobs['organization'];
+				
+				if(!empty($branchId))
+				{
+					$sqlBranch = "SELECT branchname FROM vtigercrm71.vtiger_branches WHERE branchesid = ?;";
+					$resBranch = $adb->pquery($sqlBranch, array($branchId));
+					$rowBranch = $adb->fetch_array($resBranch);
+					$branch = $rowBranch['branchname'];
+				}
+				elseif(!empty($orgId))
+				{
+					// Take organization
+					$sqlOrg = "SELECT accountname FROM vtigercrm71.vtiger_account WHERE accountid = ?;";
+					$resOrg = $adb->pquery($sqlOrg, array($orgId));
+					$rowOrg = $adb->fetch_array($resOrg);
+					$branch = $rowOrg['accountname'];
+				}
+				/*
+				else
+				{
+					//Take Contact
+					$contactId = $rowJobs['contact'];
+					$sqlContact = "SELECT lastname FROM vtigercrm71.vtiger_contactdetails WHERE contactid = ?;";
+					$resContact = $adb->pquery($sqlContact, array($contactId));
+					$rowContact = $adb->fetch_array($resContact);
+					$branch = $rowContact ['lastname'];
+					
+				}
+				*/
+				else
+				{
+					//Take Street
+					$branch = $rowJobs[$GLOBALS['cfid_OrganizationStreet']];
+				}
+				
+				$arrData[] = array( 
+					'element0' => $count, // No
+					'element1' => $branch, // Location
+					'element2' => $startDate, // Service date
+					'element3' => $startTime, // Time
+					'element4' => $treatment, // Treatment
+				);
+				
+				$count++;
+			}
+		}
+		
+		/*
+		$arrData = array(//Job schdule dummy data 
+			array(
+			'element0' => '1', // No
+			'element1' => '01-Jan-2022', // Service date
+			'element2' => '10:30PM', // Time
+			'element3' => 'GP', // Treatment
+			'element4' => 'BAWANGCHAJI @ SS2', // Location
+			),
+				
+			array(
+			'element0' => '2', // No
+			'element1' => '01-Apr-2022', // Service date 
+			'element2' => '10:30PM', // Time
+			'element3' => 'Misting', // Treatment
+			'element4' => 'BAWANGCHAJI @ MID VALLEY', // Location
+			)
+		);
+		*/
+		
+		//Set the Attributes
+		$numOfColumn = count($arrData[0]);
+		for($i=0; $i<$numOfColumn; $i++)
+		{
+			foreach($arrData as $key => $lineData)
+			{
+				if($i==0)	// 1st column
+				{
+					$arr2dTdAttributes[$key][$i] = array
+					(
+						'align' => 'center',
+						'style' => 'font-size: 20px; font-family:Arial,Helvetica,sans-serif; text-align: left;',
+						'valign' => 'top'
+					);
+				}
+				else if($i==1)	// 2nd column
+				{
+					$arr2dTdAttributes[$key][$i] = array
+					(
+						'align' => 'center',
+						'style' => 'font-size: 20px; font-family:Arial,Helvetica,sans-serif; text-align: center;',
+						'valign' => 'top'
+					);
+				}
+				else if($i==2)	// 3rd column
+				{
+					$arr2dTdAttributes[$key][$i] = array
+					(
+						'align' => 'center',
+						'style' => 'font-size: 20px; font-family:Arial,Helvetica,sans-serif; text-align: center;',
+						'valign' => 'top'
+					);
+				}
+				else if($i==3)	// 4rd column
+				{
+					$arr2dTdAttributes[$key][$i] = array
+					(
+						'align' => 'center',
+						'style' => 'font-size: 20px; font-family:Arial,Helvetica,sans-serif; text-align: center;',
+						'valign' => 'top'
+					);
+				}
+				else if($i==4)	// 5th column
+				{
+					$arr2dTdAttributes[$key][$i] = array
+					(
+						'align' => 'left',
+						'style' => 'font-size: 20px; font-family:Arial,Helvetica,sans-serif; text-align: left;',
+						'valign' => 'top'
+					);
+				}
+				else 
+				{
+					$arr2dTdAttributes[$key][$i] = array
+					(
+						'align' => 'right',
+						'style' => 'font-size: 20px; font-family:Arial,Helvetica,sans-serif; text-align: right;',
+						'valign' => 'top'
+					);
+				}
+			}
+		}
+		
+		$rowInstructions = my_ConstructTR($arrData, $arr2dTdAttributes);
+			
+
+		return print_r($rowInstructions,true);
+	}
+}
+
+?>
